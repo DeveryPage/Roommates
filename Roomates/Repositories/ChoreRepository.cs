@@ -8,8 +8,10 @@ using Roommates.Models;
 
 namespace Roommates.Repositories
 {
-    class ChoreRepository
+    class ChoreRepository : BaseRepository
     {
+        public ChoreRepository(string connectionString) : base(connectionString) { }
+
         public SqlConnection Connection { get; private set; }
 
         public List<Chore> GetAll()
@@ -124,9 +126,37 @@ namespace Roommates.Repositories
 
             // when this method is finished we can look in the database and see the new chore.
         }
-    public void GetUnassignedChores()
+    public List<Chore> GetUnassignedChores()
         {
-            return
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"SELECT c.Name, rc.RoommateId
+                                       FROM Chore as c
+                                       LEFT JOIN RoommateChore as rc
+                                       ON c.id rc.ChoreId
+                                       WHERE rc.RoommateId is null";
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        List<Chore> roommateChores = new List<Chore>();
+                        while (reader.Read())
+                        {
+                            int nameColumnPosition = reader.GetOrdinal("Chore Name");
+                            string nameValue = reader.GetString(nameColumnPosition);
+
+                            Chore roommateChore = new Chore
+                            {
+                                Name = nameValue,
+                            };
+
+                            roommateChores.Add(roommateChore);
+                        }
+                        return roommateChores;
+                    }
+                }
+            }
         }
     }
 }
